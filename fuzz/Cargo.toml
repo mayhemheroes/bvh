@@ -3,17 +3,13 @@ name = "bvh-fuzz"
 version = "0.0.0"
 authors = ["Automatically generated"]
 publish = false
-edition = "2024"
+edition = "2018"
 
 [package.metadata]
 cargo-fuzz = true
 
 [dependencies]
-arbitrary = { version = "1.4.1", features = ["derive"] }
-approx = "0.5"
 libfuzzer-sys = "0.4"
-nalgebra = "0.34"
-ordered-float = { version = "5.1.0", features = ["arbitrary"] }
 
 [dependencies.bvh]
 path = ".."
@@ -23,7 +19,7 @@ path = ".."
 members = ["."]
 
 [[bin]]
-name = "fuzz"
-path = "fuzz_targets/fuzz.rs"
+name = "bvh-fuzz"
+path = "fuzz_targets/bvh-fuzz.rs"
 test = false
 doc = false
