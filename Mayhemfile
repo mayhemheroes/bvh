@@ -1,0 +1,6 @@
+project: bvh
+target: bvh-fuzz
+
+cmds:
+    - cmd: ./bvh-fuzz
+      libfuzzer: true
