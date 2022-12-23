@@ -1,29 +1,35 @@
 #![no_main]
+
+use arbitrary::{Arbitrary, Unstructured};
 use libfuzzer_sys::fuzz_target;
+
 use bvh::aabb::{Bounded, AABB};
 use bvh::bounding_hierarchy::BHShape;
 use bvh::bvh::BVH;
 use bvh::ray::Ray;
-use bvh::{Point3, Vector3};
+use bvh::Point3;
 
-//From examples/simple.rs
-#[derive(Debug)]
-struct Sphere {
-    position: Point3,
-    radius: f32,
+#[derive(Arbitrary, Debug)]
+struct Shape {
+    #[arbitrary(with = arbitrary_point)]
+    min: Point3,
+    #[arbitrary(with = arbitrary_point)]
+    max: Point3,
+    #[arbitrary(value = 0)]
     node_index: usize,
 }
 
-impl Bounded for Sphere {
+fn arbitrary_point(u: &mut Unstructured) -> arbitrary::Result<Point3> {
+    Ok(Point3::new(u.arbitrary()?, u.arbitrary()?, u.arbitrary()?))
+}
+
+impl Bounded for Shape {
     fn aabb(&self) -> AABB {
-        let half_size = Vector3::new(self.radius, self.radius, self.radius);
-        let min = self.position - half_size;
-        let max = self.position + half_size;
-        AABB::with_bounds(min, max)
+        AABB::with_bounds(self.min, self.max)
     }
 }
 
-impl BHShape for Sphere {
+impl BHShape for Shape {
     fn set_bh_node_index(&mut self, index: usize) {
         self.node_index = index;
     }
@@ -33,26 +39,18 @@ impl BHShape for Sphere {
     }
 }
 
-fuzz_target!(|data: &[u8]| {
-    if data.len() > (10 * 4) {
-        let origin = Point3::new(unsafe{std::ptr::read(&data[0])} as f32, unsafe{std::ptr::read(&data[4])} as f32, unsafe{std::ptr::read(&data[8])} as f32);
-        let direction = Vector3::new(unsafe{std::ptr::read(&data[12])} as f32, unsafe{std::ptr::read(&data[16])} as f32, unsafe{std::ptr::read(&data[20])} as f32);
-        let ray = Ray::new(origin, direction);
-        let mut idx = 24;
-        let mut spheres = Vec::new();
-        while idx + (4 * 4) < data.len() {
-            let position = Point3::new(unsafe{std::ptr::read(&data[idx])} as f32, unsafe{std::ptr::read(&data[idx + 4])} as f32, unsafe{std::ptr::read(&data[idx + 8])} as f32);
-            let mut radius = unsafe{std::ptr::read(&data[idx])} as f32;
-            radius = radius.abs();
+#[derive(Arbitrary, Debug)]
+struct FuzzInput {
+    #[arbitrary(with = arbitrary_point)]
+    ray_origin: Point3,
+    #[arbitrary(with = arbitrary_point)]
+    ray_dir: Point3,
+    shapes: Vec<Shape>,
+}
 
-            spheres.push(Sphere {
-                position,
-                radius,
-                node_index: 1,
-            });
-            idx += (4 * 4);
-        }
-        let bvh = BVH::build(&mut spheres);
-        let hit_sphere_aabbs = bvh.traverse(&ray, &spheres);
-    }
+fuzz_target!(|data: FuzzInput| {
+    let mut data = data;
+    let ray = Ray::new(data.ray_origin, data.ray_dir);
+    let bvh = BVH::build(&mut data.shapes);
+    let _ = bvh.traverse(&ray, &data.shapes);
 });
