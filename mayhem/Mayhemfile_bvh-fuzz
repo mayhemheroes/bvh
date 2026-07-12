@@ -1,0 +1,6 @@
+project: bvh
+target: bvh-fuzz
+
+cmds:
+  - cmd: /mayhem/bvh-fuzz
+    libfuzzer: true
